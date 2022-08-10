@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.enitt.smartManagementSystem.dao.TempDAO">
+	<sql id="base_temp_column">
+		T.temp_id 			AS tempId
+		,T.temp_name 		AS tempName
+		,T.temp_value 		AS tempValue
+		,T.temp_color 		AS tempColor
+		,T.temp_order		AS tempOrder
+		,T.register_date 		AS registerDate
+		,T.register_id 		AS registerId
+		,T.register_ip 		AS registerIp
+		,T.update_date 		AS updateDate
+		,T.update_id 			AS updateId
+		,T.update_ip 			AS updateIp
+	</sql>
+	
+	<select id="getTempList" parameterType="CommonVO" resultType="TempVO">
+		<![CDATA[ 
+			SELECT 
+		]]>
+		<include refid="base_temp_column" />
+		<![CDATA[ 
+			FROM	tb_temp T
+			WHERE	1=1
+		]]>
+		<if test='searchType == null or searchType == "" '>
+			<if test='searchWord != null and searchWord != "" '>
+				<![CDATA[ 
+						AND (
+							T.temp_name LIKE CONCAT('%', #{searchWord},'%') 
+							OR
+							T.temp_value LIKE CONCAT('%', #{searchWord},'%')
+							OR
+							T.temp_color LIKE CONCAT('%', #{searchWord},'%')
+						)
+				]]>
+			</if>
+		</if>
+		<if test='searchType != null and searchType != "" and searchType == "NAME" '>
+			<![CDATA[ AND T.temp_name LIKE CONCAT('%', #{searchWord},'%') ]]>
+		</if>
+		<if test='searchType != null and searchType != "" and searchType == "VALUE" '>
+			<![CDATA[ AND T.temp_value LIKE CONCAT('%', #{searchWord},'%') ]]>
+		</if>
+		<if test='searchType != null and searchType != "" and searchType == "COLOR" '>
+			<![CDATA[ AND T.temp_color LIKE CONCAT('%', #{searchWord},'%') ]]>
+		</if>
+		<![CDATA[ 
+			ORDER BY T.register_date ASC 
+		]]>
+	</select>
+	
+	<select id="getTempPagingList" parameterType="CommonVO" resultType="TempVO">
+		<![CDATA[ 
+			SELECT 
+		]]>
+		<include refid="base_temp_column" />
+		<![CDATA[ 
+			FROM	tb_temp T
+			WHERE	1=1
+		]]>
+		<if test='searchType == null or searchType == "" '>
+			<if test='searchWord != null and searchWord != "" '>
+				<![CDATA[ 
+						AND (
+							T.temp_name LIKE CONCAT('%', #{searchWord},'%') 
+							OR
+							T.temp_value LIKE CONCAT('%', #{searchWord},'%')
+							OR
+							T.temp_color LIKE CONCAT('%', #{searchWord},'%')
+						)
+				]]>
+			</if>
+		</if>
+		<if test='searchType != null and searchType != "" and searchType == "NAME" '>
+			<![CDATA[ AND T.temp_name LIKE CONCAT('%', #{searchWord},'%') ]]>
+		</if>
+		<if test='searchType != null and searchType != "" and searchType == "VALUE" '>
+			<![CDATA[ AND T.temp_value LIKE CONCAT('%', #{searchWord},'%') ]]>
+		</if>
+		<if test='searchType != null and searchType != "" and searchType == "COLOR" '>
+			<![CDATA[ AND T.temp_color LIKE CONCAT('%', #{searchWord},'%') ]]>
+		</if>
+		<![CDATA[ 
+			ORDER BY T.register_date ASC 
+			LIMIT ${startNum}, ${pageSize}
+		]]>
+	</select>
+	
+	<select id="getTempListCnt" parameterType="CommonVO" resultType="int">
+		<![CDATA[ 
+			SELECT 
+					count(0) AS cnt
+			FROM	tb_temp T
+			WHERE	1=1
+		]]>
+		<if test='searchType == null or searchType == "" '>
+			<if test='searchWord != null and searchWord != "" '>
+				<![CDATA[ 
+						AND (
+							T.temp_name LIKE CONCAT('%', #{searchWord},'%') 
+							OR
+							T.temp_value LIKE CONCAT('%', #{searchWord},'%')
+							OR
+							T.temp_color LIKE CONCAT('%', #{searchWord},'%')
+						)
+				]]>
+			</if>
+		</if>
+		<if test='searchType != null and searchType != "" and searchType == "NAME" '>
+			<![CDATA[ AND T.temp_name LIKE CONCAT('%', #{searchWord},'%') ]]>
+		</if>
+		<if test='searchType != null and searchType != "" and searchType == "VALUE" '>
+			<![CDATA[ AND T.temp_value LIKE CONCAT('%', #{searchWord},'%') ]]>
+		</if>
+		<if test='searchType != null and searchType != "" and searchType == "COLOR" '>
+			<![CDATA[ AND T.temp_color LIKE CONCAT('%', #{searchWord},'%') ]]>
+		</if>
+	</select>
+	
+	<select id="getTempDetail" parameterType="CommonVO" resultType="TempVO">
+		<![CDATA[ 
+			SELECT 
+		]]>
+		<include refid="base_temp_column" />
+		<![CDATA[ 
+			FROM	tb_temp T
+			WHERE	1=1
+			AND T.temp_id = #{tempId} 
+		]]>
+	</select>
+	
+	<insert id="createTemp" parameterType="TempVO">
+		<![CDATA[ 
+			INSERT INTO   
+			tb_temp(
+					temp_name
+					,temp_value
+					,temp_color 		
+					,temp_order
+			        ,register_date 
+			        ,register_id
+			        ,register_ip
+			)VALUES(
+					#{tempName}
+					,#{tempValue}
+					,#{tempColor}
+					,#{tempOrder}
+			        ,NOW()
+			        ,#{registerId}
+			        ,#{registerIp}   
+			)       
+        ]]>
+	</insert>
+	<update id="updateTemp" parameterType="TempVO">
+		<![CDATA[ 
+			UPDATE 	tb_temp
+			SET	
+						temp_name = #{tempName}
+						,temp_value = #{tempValue}
+						,temp_color = #{tempColor}	
+						,temp_order = #{tempOrder}
+				        ,update_date = NOW()
+				        ,update_id  = #{updateId}
+				        ,update_ip  = #{updateIp}
+			WHERE temp_id = #{tempId}
+		]]>
+	</update>
+	
+	<update id="deleteTemp" parameterType="TempVO">
+		<![CDATA[ 
+			DELETE 	FROM tb_temp
+			WHERE temp_id = #{tempId}
+		]]>
+	</update>
+</mapper>

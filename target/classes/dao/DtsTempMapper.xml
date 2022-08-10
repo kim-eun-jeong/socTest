@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.enitt.smartManagementSystem.dao.DtsTempDAO">
+	<sql id="base_temp_column"> 
+		T.temp_id							AS tempId
+       ,T.temp_name						AS tempName
+       ,T.temp_value						AS tempValue
+       ,T.temp_order						AS tempOrder
+       ,T.temp_color						AS tempColor
+       ,T.register_date					AS registerDate
+       ,T.register_id						AS registerId
+       ,T.register_ip						AS registerIp
+       ,T.update_date					AS updateDate
+       ,T.update_id						AS updateId
+       ,T.update_ip						AS updateIp
+	</sql>
+	
+	<sql id="base_dts_temp_column"> 
+		E.dts_temp_id					AS dtsTempId
+		,E.dts_temp_time					AS dtsTempTime
+		,E.dts_temp_temp				AS dtsTempTemp
+		,E.dts_temp_tunnel				AS dtsTempTunnel
+		,E.dts_temp_line					AS dtsTempLine
+		,E.dts_temp_register_date		AS dtsTempRegisterDate
+	</sql>
+	
+	<sql id="base_dts_temp_line">
+		EC.code_name 			AS dtsTempLineNm
+	</sql>
+	
+	<select id="getTempList" parameterType="CommonVO" resultType="DtsTempVO">
+		<![CDATA[ 
+			SELECT 
+		]]>
+		<include refid="base_temp_column" />
+		<![CDATA[ 
+			FROM   	tb_temp T
+			WHERE	1=1
+			ORDER 	BY T.temp_order ASC 
+		]]>
+	</select>
+	
+	<select id="getDtsTempList" parameterType="CommonVO" resultType="DtsTempVO">
+		<![CDATA[ 
+			SELECT 
+		]]>
+		<include refid="base_dts_temp_column" />
+		,<include refid="base_dts_temp_line" />
+		<![CDATA[ 
+			FROM tb_dts_temp E
+			LEFT JOIN tb_code EC
+			ON (EC.code_id = E.dts_temp_line
+			AND EC.parent_code_id = 'LINE'
+			AND	EC.code_use_yn = 'Y'
+			)
+			WHERE	1=1
+		]]>
+		<if test=' tempTime != null and tempTime != "" '>
+			<![CDATA[ AND (
+									DATE_FORMAT(E.dts_temp_time, '%Y-%m-%d %H:%i:%s') >= DATE_FORMAT(DATE_SUB(#{tempTime}, INTERVAL 30 MINUTE), '%Y-%m-%d %H:%i:%s')
+       		  						AND
+              						DATE_FORMAT(E.dts_temp_time, '%Y-%m-%d %H:%i:%s') <= DATE_FORMAT(DATE_ADD(#{tempTime}, INTERVAL 30 MINUTE), '%Y-%m-%d %H:%i:%s')
+       							 )
+			]]>
+		</if>
+		<if test=' tempTunnel != null and tempTunnel != "" '>
+			<![CDATA[ AND E.dts_temp_tunnel = #{tempTunnel} ]]>
+		</if>
+		<if test=' tempLine != null and tempLine != "" '>
+			<![CDATA[ AND E.dts_temp_line = #{tempLine} ]]>
+		</if>
+		<if test=' tempDate != null and tempDate != "" '>
+			<![CDATA[ AND DATE_FORMAT(E.dts_temp_time, '%Y-%m-%d') = #{tempDate} ]]>
+		</if>
+		<if test=' tempHistory != null and tempHistory != "" '>
+			<![CDATA[ORDER BY E.dts_temp_time ASC ]]>
+		</if>
+		<if test=' tempHistory == null or tempHistory == "" '>
+			<![CDATA[ORDER BY E.dts_temp_time DESC ]]>
+		</if>
+		
+		<if test=' tempLimit == "Y" '>
+			<![CDATA[ LIMIT 1 ]]>
+		</if>
+	</select>
+	
+</mapper>

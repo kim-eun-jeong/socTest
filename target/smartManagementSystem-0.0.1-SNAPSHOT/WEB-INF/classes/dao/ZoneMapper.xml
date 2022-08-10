@@ -1,0 +1,256 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.enitt.smartManagementSystem.dao.ZoneDAO">
+	<sql id="base_zone_column">
+		Z.zone_id 			AS zoneId
+		,Z.zone_type 			AS zoneType
+		,Z.zone_name 		AS zoneName
+		,Z.zone_line 		AS zoneLine
+		,Z.zone_start 		AS zoneStart
+		,Z.zone_end 			AS zoneEnd
+		,Z.zone_order		AS zoneOrder
+		,Z.register_date 		AS registerDate
+		,Z.register_id 		AS registerId
+		,Z.register_ip 		AS registerIp
+		,Z.update_date 		AS updateDate
+		,Z.update_id 			AS updateId
+		,Z.update_ip 			AS updateIp
+	</sql>
+	
+	<sql id="base_zone_code_column">
+		ZC.code_name 			AS zoneTypeNm
+	</sql>
+	<sql id="base_zone_line_column">
+		ZC2.code_name 			AS zoneLineNm
+	</sql>
+	
+	<select id="getZoneList" parameterType="CommonVO" resultType="ZoneVO">
+		<![CDATA[ 
+			SELECT 
+		]]>
+		<include refid="base_zone_column" />,
+		<include refid="base_zone_code_column" />,
+		<include refid="base_zone_line_column" />
+		<![CDATA[ 
+			FROM	tb_zone Z
+			LEFT JOIN tb_code ZC
+			ON	(
+			ZC.code_id = Z.zone_type
+			AND ZC.parent_code_id = 'ZONE_TYPE'
+			AND ZC.code_use_yn = 'Y'
+			)
+			LEFT JOIN tb_code ZC2
+			ON	(
+			ZC2.code_id = Z.zone_line
+			AND ZC2.parent_code_id = 'LINE'
+			AND ZC2.code_use_yn = 'Y'
+			)
+			WHERE	1=1
+		]]>
+		<if test='searchType == null or searchType == "" '>
+			<if test='searchWord != null and searchWord != "" '>
+				<![CDATA[ 
+						AND (
+							ZC.code_name LIKE CONCAT('%', #{searchWord},'%') 
+							OR
+							Z.zone_name LIKE CONCAT('%', #{searchWord},'%')
+							OR
+							ZC2.code_name LIKE CONCAT('%', #{searchWord},'%')
+						)
+				]]>
+			</if>
+		</if>
+		<if test='searchWord != null and searchWord != "" and searchType == "TYPE" '>
+			<![CDATA[ AND ZC.code_name LIKE CONCAT('%', #{searchWord},'%') ]]>
+		</if>
+		<if test='searchWord != null and searchWord != "" and searchType == "NAME" '>
+			<![CDATA[ AND Z.zone_name LIKE CONCAT('%', #{searchWord},'%') ]]>
+		</if>
+		<if test='searchWord != null and searchWord != "" and searchType == "LINE" '>
+			<![CDATA[ AND ZC2.code_name LIKE CONCAT('%', #{searchWord},'%') ]]>
+		</if>
+		<if test='zoneLine != null and zoneLine != "" '>
+			<![CDATA[ AND (Z.zone_line IS NULL  OR LENGTH(Z.zone_line) < 7  OR Z.zone_line = #{zoneLine}) ]]>
+		</if>
+		<if test='zoneId != null and zoneId != "" '>
+			<![CDATA[ AND Z.zone_id = #{zoneId} ]]>
+		</if>
+		<if test='zoneIdStr != null and zoneIdStr != "" '>
+			<![CDATA[ AND Z.zone_id IN (${zoneIdStr}) ]]>
+		</if>
+		<![CDATA[ 
+			ORDER BY Z.register_date ASC 
+		]]>
+	</select>
+	
+	<select id="getZonePagingList" parameterType="CommonVO" resultType="ZoneVO">
+		<![CDATA[ 
+			SELECT 
+		]]>
+		<include refid="base_zone_column" />,
+		<include refid="base_zone_code_column" />,
+		<include refid="base_zone_line_column" />
+		<![CDATA[ 
+			FROM	tb_zone Z
+			LEFT JOIN tb_code ZC
+			ON	(
+			ZC.code_id = Z.zone_type
+			AND ZC.parent_code_id = 'ZONE_TYPE'
+			AND ZC.code_use_yn = 'Y'
+			)
+			LEFT JOIN tb_code ZC2
+			ON	(
+			ZC2.code_id = Z.zone_line
+			AND ZC2.parent_code_id = 'LINE'
+			AND ZC2.code_use_yn = 'Y'
+			)
+			WHERE	1=1
+		]]>
+		<if test='searchType == null or searchType == "" '>
+			<if test='searchWord != null and searchWord != "" '>
+				<![CDATA[ 
+						AND (
+							ZC.code_name LIKE CONCAT('%', #{searchWord},'%') 
+							OR
+							Z.zone_name LIKE CONCAT('%', #{searchWord},'%')
+							OR
+							ZC2.code_name LIKE CONCAT('%', #{searchWord},'%')
+						)
+				]]>
+			</if>
+		</if>
+		<if test='searchWord != null and searchWord != "" and searchType == "TYPE" '>
+			<![CDATA[ AND ZC.code_name LIKE CONCAT('%', #{searchWord},'%') ]]>
+		</if>
+		<if test='searchWord != null and searchWord != "" and searchType == "NAME" '>
+			<![CDATA[ AND Z.zone_name LIKE CONCAT('%', #{searchWord},'%') ]]>
+		</if>
+		<if test='searchWord != null and searchWord != "" and searchType == "LINE" '>
+			<![CDATA[ AND ZC2.code_name LIKE CONCAT('%', #{searchWord},'%') ]]>
+		</if>
+		<![CDATA[ 
+			ORDER BY Z.register_date ASC 
+			LIMIT ${startNum}, ${pageSize}
+		]]>
+	</select>
+	
+	<select id="getZoneListCnt" parameterType="CommonVO" resultType="int">
+		<![CDATA[ 
+			SELECT 
+					count(0) AS cnt
+			FROM	tb_zone Z
+			LEFT JOIN tb_code ZC
+			ON	(
+			ZC.code_id = Z.zone_type
+			AND ZC.parent_code_id = 'ZONE_TYPE'
+			AND ZC.code_use_yn = 'Y'
+			)
+			LEFT JOIN tb_code ZC2
+			ON	(
+			ZC2.code_id = Z.zone_line
+			AND ZC2.parent_code_id = 'LINE'
+			AND ZC2.code_use_yn = 'Y'
+			)
+			WHERE	1=1
+		]]>
+		<if test='searchType == null or searchType == "" '>
+			<if test='searchWord != null and searchWord != "" '>
+				<![CDATA[ 
+						AND (
+							ZC.code_name LIKE CONCAT('%', #{searchWord},'%') 
+							OR
+							Z.zone_name LIKE CONCAT('%', #{searchWord},'%')
+							OR
+							ZC2.code_name LIKE CONCAT('%', #{searchWord},'%')
+						)
+				]]>
+			</if>
+		</if>
+		<if test='searchWord != null and searchWord != "" and searchType == "TYPE" '>
+			<![CDATA[ AND ZC.code_name LIKE CONCAT('%', #{searchWord},'%') ]]>
+		</if>
+		<if test='searchWord != null and searchWord != "" and searchType == "NAME" '>
+			<![CDATA[ AND Z.zone_name LIKE CONCAT('%', #{searchWord},'%') ]]>
+		</if>
+		<if test='searchWord != null and searchWord != "" and searchType == "LINE" '>
+			<![CDATA[ AND ZC2.code_name LIKE CONCAT('%', #{searchWord},'%') ]]>
+		</if>
+	</select>
+	
+	<select id="getZoneDetail" parameterType="CommonVO" resultType="ZoneVO">
+		<![CDATA[ 
+			SELECT 
+		]]>
+		<include refid="base_zone_column" />,
+		<include refid="base_zone_code_column" />,
+		<include refid="base_zone_line_column" />
+		<![CDATA[ 
+			FROM	tb_zone Z
+			LEFT JOIN tb_code ZC
+			ON	(
+			ZC.code_id = Z.zone_type
+			AND ZC.parent_code_id = 'ZONE_TYPE'
+			AND ZC.code_use_yn = 'Y'
+			)
+			LEFT JOIN tb_code ZC2
+			ON	(
+			ZC2.code_id = Z.zone_line
+			AND ZC2.parent_code_id = 'LINE'
+			AND ZC2.code_use_yn = 'Y'
+			)
+			WHERE	1=1
+			AND Z.zone_id = #{zoneId} 
+		]]>
+	</select>
+	
+	<insert id="createZone" parameterType="ZoneVO">
+		<![CDATA[ 
+			INSERT INTO   
+			tb_zone(
+					zone_type
+					,zone_name
+					,zone_line
+					,zone_start 
+					,zone_end 		
+					,zone_order
+			        ,register_date 
+			        ,register_id
+			        ,register_ip
+			)VALUES(
+					#{zoneType}
+					,#{zoneName}
+					,#{zoneLine}
+					,#{zoneStart}
+					,#{zoneEnd}
+					,#{zoneOrder}
+			        ,NOW()
+			        ,#{registerId}
+			        ,#{registerIp}   
+			)       
+        ]]>
+	</insert>
+	<update id="updateZone" parameterType="ZoneVO">
+		<![CDATA[ 
+			UPDATE 	tb_zone
+			SET	
+						zone_type = #{zoneType}
+						,zone_name = #{zoneName}
+						,zone_line = #{zoneLine}
+						,zone_start = #{zoneStart}
+						,zone_end = #{zoneEnd}	
+						,zone_order = #{zoneOrder}
+				        ,update_date = NOW()
+				        ,update_id  = #{updateId}
+				        ,update_ip  = #{updateIp}
+			WHERE zone_id = #{zoneId}
+		]]>
+	</update>
+	
+	<update id="deleteZone" parameterType="ZoneVO">
+		<![CDATA[ 
+			DELETE 	FROM tb_zone
+			WHERE zone_id = #{zoneId}
+		]]>
+	</update>
+</mapper>

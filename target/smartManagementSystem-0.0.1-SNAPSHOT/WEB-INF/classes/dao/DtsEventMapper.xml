@@ -1,0 +1,342 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.enitt.smartManagementSystem.dao.DtsEventDAO">
+	<sql id="base_dts_event_column"> 
+		E.dts_event_id 				AS dtsEventId
+	    ,E.dts_event_code 			AS dtsEventCode
+	   	,E.dts_event_time 			AS dtsEventTime
+	   	,E.dts_event_update_time 	AS dtsEventUpdateTime
+	  	,E.dts_event_location		AS dtsEventLocation
+	  	,CONCAT('STA.',TRUNCATE((E.dts_event_location+(6*20+11))/20,0),'+',(E.dts_event_location+(6*20+11))%20,'m')		AS dtsEventLocationStr
+	  	,ROUND(E.dts_event_temp,1)	AS dtsEventTemp
+	  	,E.dts_event_tunnel 			AS dtsEventTunnel
+	  	,E.dts_event_zone 			AS dtsEventZone
+	  	,E.dts_event_line 			AS dtsEventLine
+	  	,E.dts_event_register_date 	AS dtsEventRegisterDate
+	  	,E.dts_event_delete_yn		AS dtsEventDeleteYn
+	</sql>
+	<sql id="base_dts_event_time_column"> 
+	   	DATE_FORMAT(E.dts_event_time, '%Y')  	AS dtsEventTimeYear
+	   	,DATE_FORMAT(E.dts_event_time, '%m') AS dtsEventTimeMonth
+	   	,DATE_FORMAT(E.dts_event_time, '%d') 	AS dtsEventTimeDay
+	   	,DATE_FORMAT(E.dts_event_time, '%H') 	AS dtsEventTimeHour
+	   	,DATE_FORMAT(E.dts_event_time, '%i')  	AS dtsEventTimeMinute
+	   	,DATE_FORMAT(E.dts_event_time, '%s')  	AS dtsEventTimeSecond
+	</sql>
+	
+	<sql id="base_dts_event_code">
+		EC.code_name 			AS dtsEventCodeNm
+	</sql>
+	
+	<sql id="base_dts_event_tunnel">
+		EC1.code_name 			AS dtsEventTunnelNm
+	</sql>
+
+	<sql id="base_dts_event_line">
+		EC2.code_name 			AS dtsEventLineNm
+	</sql>
+	
+	<sql id="base_dts_event_zone">
+	    Z.zone_name				AS dtsEventZoneNm
+	</sql>
+	
+	<select id="getDtsEventList" parameterType="CommonVO" resultType="DtsEventVO">
+		<![CDATA[ 
+			SELECT 
+		]]>
+		<include refid="base_dts_event_column" />,
+		<include refid="base_dts_event_time_column" />,
+		<include refid="base_dts_event_code" />,
+		<include refid="base_dts_event_tunnel" />,
+		<include refid="base_dts_event_line" />,
+		<include refid="base_dts_event_zone" />
+		<![CDATA[ 
+			FROM tb_dts_event E
+			LEFT JOIN tb_code EC
+			ON (EC.code_id = E.dts_event_code
+			AND EC.parent_code_id = 'DTS_EVENT'
+			AND	EC.code_use_yn = 'Y'
+			)
+			LEFT JOIN tb_code EC1
+			ON (EC1.code_id = E.dts_event_tunnel
+			AND EC1.parent_code_id = 'TUNNEL'
+			AND	EC1.code_use_yn = 'Y'
+			)
+			LEFT JOIN tb_code EC2
+			ON (EC2.code_id = E.dts_event_line
+			AND EC2.parent_code_id = 'LINE'
+			AND	EC2.code_use_yn = 'Y'
+			)
+			LEFT JOIN tb_zone Z
+			ON (E.dts_event_location >= Z.zone_start AND E.dts_event_location <= Z.zone_END)
+			WHERE	1=1
+		]]>
+		<if test=' eventTimeStart != null and eventTimeStart != "" '>
+			<![CDATA[ AND date_format(E.dts_event_time, '%Y-%m-%d') >= date_format(#{eventTimeStart}, '%Y-%m-%d') ]]>
+		</if>
+		<if test=' eventTimeEnd != null and eventTimeEnd != "" '>
+			<![CDATA[ AND date_format(E.dts_event_time, '%Y-%m-%d') <= date_format(#{eventTimeEnd}, '%Y-%m-%d') ]]>
+		</if>
+		<if test=' eventLocationStart != null and eventLocationStart != "" '>
+			<![CDATA[ AND ROUND((E.dts_event_location+(6*20+12))/20) >= #{eventLocationStart} ]]>
+		</if>
+		<if test=' eventLocationEnd != null and eventLocationEnd != "" '>
+			<![CDATA[ AND ROUND((E.dts_event_location+(6*20+12))/20) <= #{eventLocationEnd} ]]>
+		</if>
+		<if test=' eventCode != null and eventCode != "" '>
+			<![CDATA[ AND E.dts_event_code = #{eventCode} ]]>
+		</if>
+		<if test=' eventLine != null and eventLine != "" '>
+			<![CDATA[ AND E.dts_event_line = #{eventLine} ]]>
+		</if>
+		<if test=' eventZone != null and eventZone != "" '>
+			<![CDATA[ AND E.dts_event_zone = #{eventZone} ]]>
+		</if>
+		<if test=' dashboard != null and dashboard != "" '>
+			<![CDATA[ 
+				AND E.dts_event_time >= DATE_SUB(#{now}, INTERVAL 12 HOUR) 
+				AND 1 =
+				       ( SELECT count(0)
+				       FROM    tb_dts_event C
+				       WHERE   C.dts_event_line         	= E.dts_event_line
+				       AND     C.dts_event_code          = E.dts_event_code
+				       AND     C.dts_event_location      = E.dts_event_location
+				       AND     C.dts_event_update_time >= DATE_FORMAT(DATE_SUB(E.dts_event_update_time, INTERVAL 2 MINUTE), '%Y-%m-%d %H:%i:%s')
+				       AND     C.dts_event_update_time <= DATE_FORMAT(E.dts_event_update_time, '%Y-%m-%d %H:%i:%s')
+				       )
+				AND E.dts_event_delete_yn = 'N'
+			]]>
+		</if>
+		<![CDATA[
+			ORDER BY E.dts_event_time DESC 
+		]]>
+	</select>
+	
+	<select id="getDtsEventPagingList" parameterType="CommonVO" resultType="DtsEventVO">
+		<![CDATA[ 
+			SELECT 
+		]]>
+		<include refid="base_dts_event_column" />,
+		<include refid="base_dts_event_code" />,
+		<include refid="base_dts_event_tunnel" />,
+		<include refid="base_dts_event_line" />,
+		<include refid="base_dts_event_zone" />
+		<![CDATA[ 
+			FROM tb_dts_event E
+			LEFT JOIN tb_code EC
+			ON (EC.code_id = E.dts_event_code
+			AND EC.parent_code_id = 'DTS_EVENT'
+			AND	EC.code_use_yn = 'Y'
+			)
+			LEFT JOIN tb_code EC1
+			ON (EC1.code_id = E.dts_event_tunnel
+			AND EC1.parent_code_id = 'TUNNEL'
+			AND	EC1.code_use_yn = 'Y'
+			)
+			LEFT JOIN tb_code EC2
+			ON (EC2.code_id = E.dts_event_line
+			AND EC2.parent_code_id = 'LINE'
+			AND	EC2.code_use_yn = 'Y'
+			)
+			LEFT JOIN tb_zone Z
+			ON (E.dts_event_location >= Z.zone_start AND E.dts_event_location <= Z.zone_END)
+			WHERE	1=1
+		]]>
+		<if test=' eventTimeStart != null and eventTimeStart != "" '>
+			<![CDATA[ AND date_format(E.dts_event_time, '%Y-%m-%d') >= date_format(#{eventTimeStart}, '%Y-%m-%d') ]]>
+		</if>
+		<if test=' eventTimeEnd != null and eventTimeEnd != "" '>
+			<![CDATA[ AND date_format(E.dts_event_time, '%Y-%m-%d') <= date_format(#{eventTimeEnd}, '%Y-%m-%d') ]]>
+		</if>
+		<if test=' eventLocationStart != null and eventLocationStart != "" '>
+			<![CDATA[ AND ROUND((E.dts_event_location+(6*20+12))/20) >= #{eventLocationStart} ]]>
+		</if>
+		<if test=' eventLocationEnd != null and eventLocationEnd != "" '>
+			<![CDATA[ AND ROUND((E.dts_event_location+(6*20+12))/20) <= #{eventLocationEnd} ]]>
+		</if>
+		<if test=' eventCode != null and eventCode != "" '>
+			<![CDATA[ AND E.dts_event_code = #{eventCode} ]]>
+		</if>
+		<if test=' eventLine != null and eventLine != "" '>
+			<![CDATA[ AND E.dts_event_line = #{eventLine} ]]>
+		</if>
+		<if test=' eventZone != null and eventZone != "" '>
+			<![CDATA[ AND E.dts_event_zone = #{eventZone} ]]>
+		</if>
+		<if test=' dashboard != null and dashboard != "" '>
+			<![CDATA[ 
+				AND E.dts_event_time >= DATE_SUB(#{now}, INTERVAL 12 HOUR) 
+				AND 1 =
+				       ( SELECT count(0)
+				       FROM    tb_dts_event C
+				       WHERE   C.dts_event_line         	= E.dts_event_line
+				       AND     C.dts_event_code          = E.dts_event_code
+				       AND     C.dts_event_location      = E.dts_event_location
+				       AND     C.dts_event_update_time >= DATE_FORMAT(DATE_SUB(E.dts_event_update_time, INTERVAL 2 MINUTE), '%Y-%m-%d %H:%i:%s')
+				       AND     C.dts_event_update_time <= DATE_FORMAT(E.dts_event_update_time, '%Y-%m-%d %H:%i:%s')
+				       )
+				AND E.dts_event_delete_yn = 'N'
+			]]>
+		</if>
+		<![CDATA[ 
+			ORDER BY E.dts_event_time DESC 
+			LIMIT ${startNum}, ${pageSize}
+		]]>
+	</select>
+	
+	<select id="getDtsEventListCnt" parameterType="CommonVO" resultType="int">
+		<![CDATA[ 
+			SELECT 
+					count(0)
+			FROM tb_dts_event E
+			LEFT JOIN tb_code EC
+			ON (EC.code_id = E.dts_event_code
+			AND EC.parent_code_id = 'DTS_EVENT'
+			AND	EC.code_use_yn = 'Y'
+			)
+			LEFT JOIN tb_code EC1
+			ON (EC1.code_id = E.dts_event_tunnel
+			AND EC1.parent_code_id = 'TUNNEL'
+			AND	EC1.code_use_yn = 'Y'
+			)
+			LEFT JOIN tb_code EC2
+			ON (EC2.code_id = E.dts_event_line
+			AND EC2.parent_code_id = 'LINE'
+			AND	EC2.code_use_yn = 'Y'
+			)
+			LEFT JOIN tb_zone Z
+			ON (E.dts_event_location >= Z.zone_start AND E.dts_event_location <= Z.zone_END)
+			WHERE	1=1
+		]]>
+		<if test=' eventTimeStart != null and eventTimeStart != "" '>
+			<![CDATA[ AND date_format(E.dts_event_time, '%Y-%m-%d') >= date_format(#{eventTimeStart}, '%Y-%m-%d') ]]>
+		</if>
+		<if test=' eventTimeEnd != null and eventTimeEnd != "" '>
+			<![CDATA[ AND date_format(E.dts_event_time, '%Y-%m-%d') <= date_format(#{eventTimeEnd}, '%Y-%m-%d') ]]>
+		</if>
+		<if test=' eventLocationStart != null and eventLocationStart != "" '>
+			<![CDATA[ AND ROUND((E.dts_event_location+(6*20+12))/20) >= #{eventLocationStart} ]]>
+		</if>
+		<if test=' eventLocationEnd != null and eventLocationEnd != "" '>
+			<![CDATA[ AND ROUND((E.dts_event_location+(6*20+12))/20) <= #{eventLocationEnd} ]]>
+		</if>
+		<if test=' eventCode != null and eventCode != "" '>
+			<![CDATA[ AND E.dts_event_code = #{eventCode} ]]>
+		</if>
+		<if test=' eventLine != null and eventLine != "" '>
+			<![CDATA[ AND E.dts_event_line = #{eventLine} ]]>
+		</if>
+		<if test=' eventZone != null and eventZone != "" '>
+			<![CDATA[ AND E.dts_event_zone = #{eventZone} ]]>
+		</if>
+		<if test=' dashboard != null and dashboard != "" '>
+			<![CDATA[ 
+				AND E.dts_event_time >=  DATE_SUB(#{now}, INTERVAL 12 HOUR) 
+				AND 1 =
+				       ( SELECT count(0)
+				       FROM    tb_dts_event C
+				       WHERE   C.dts_event_line         	= E.dts_event_line
+				       AND     C.dts_event_code          = E.dts_event_code
+				       AND     C.dts_event_location      = E.dts_event_location
+				       AND     C.dts_event_update_time >= DATE_FORMAT(DATE_SUB(E.dts_event_update_time, INTERVAL 2 MINUTE), '%Y-%m-%d %H:%i:%s')
+				       AND     C.dts_event_update_time <= DATE_FORMAT(E.dts_event_update_time, '%Y-%m-%d %H:%i:%s')
+				       )
+				AND E.dts_event_delete_yn = 'N'
+			 ]]>
+		</if>
+		<if test=' dtsLastTime != null and dtsLastTime != "" '>
+			<![CDATA[ 
+		 		AND    E.dts_event_time >=  DATE_FORMAT(#{dtsLastTime} , '%Y-%m-%d %H:%i:%s')
+			]]>
+		</if>
+	</select>
+	
+	<select id="getDtsEventCntList" parameterType="CommonVO" resultType="DtsEventVO">
+		<![CDATA[ 
+				SELECT   	EC.code_id AS codeId
+							,EC.code_name AS codeName
+							,IFNULL(E.cnt,0) AS eventCnt
+			FROM     	tb_code EC
+			LEFT JOIN	( 
+				            SELECT  
+				                        count(0) as cnt ,
+				            			E.dts_event_code as event_code
+				            FROM     	tb_dts_event E
+				            WHERE    	1=1
+		]]>
+		<if test=' dashboard != null and dashboard != "" '>
+			<![CDATA[ 
+							AND E.dts_event_time >=  DATE_SUB(#{now}, INTERVAL 12 HOUR) 
+							AND 1 =
+							       ( SELECT count(0)
+							       FROM    tb_dts_event C
+							       WHERE   C.dts_event_line         	= E.dts_event_line
+							       AND     C.dts_event_code          = E.dts_event_code
+							       AND     C.dts_event_location      = E.dts_event_location
+							       AND     C.dts_event_update_time >= DATE_FORMAT(DATE_SUB(E.dts_event_update_time, INTERVAL 2 MINUTE), '%Y-%m-%d %H:%i:%s')
+							       AND     C.dts_event_update_time <= DATE_FORMAT(E.dts_event_update_time, '%Y-%m-%d %H:%i:%s')
+							       )
+							AND E.dts_event_delete_yn = 'N'
+			 ]]>
+		</if>
+		<![CDATA[ 
+				            GROUP BY 	dts_event_code
+				            ) AS E
+			ON       		E.event_code = EC.code_id
+			WHERE    	EC.parent_code_id = 'DTS_EVENT'
+			AND      		EC.code_use_yn = 'Y'
+			AND      		EC.code_id !=  'EVENT_00'
+			ORDER BY 	EC.code_id
+		]]>
+	</select>
+	
+	<select id="getDtsEventDetail" parameterType="CommonVO" resultType="DtsEventVO">
+		<![CDATA[ 
+			SELECT 
+		]]>
+		<include refid="base_dts_event_column" />,
+		<include refid="base_dts_event_code" />,
+		<include refid="base_dts_event_tunnel" />,
+		<include refid="base_dts_event_line" />,
+		<include refid="base_dts_event_zone" />
+		<![CDATA[ 
+			FROM tb_dts_event E
+			LEFT JOIN tb_code EC
+			ON (EC.code_id = E.dts_event_code
+			AND EC.parent_code_id = 'DTS_EVENT'
+			AND	EC.code_use_yn = 'Y'
+			)
+			LEFT JOIN tb_code EC1
+			ON (EC1.code_id = E.dts_event_tunnel
+			AND EC1.parent_code_id = 'TUNNEL'
+			AND	EC1.code_use_yn = 'Y'
+			)
+			LEFT JOIN tb_code EC2
+			ON (EC2.code_id = E.dts_event_line
+			AND EC2.parent_code_id = 'LINE'
+			AND	EC2.code_use_yn = 'Y'
+			)
+			LEFT JOIN tb_zone Z
+			ON (E.dts_event_location >= Z.zone_start AND E.dts_event_location <= Z.zone_END)
+			WHERE	1=1
+			AND E.dts_event_id = #{dtsEventId}
+		]]>
+	</select>
+	<select id="getDeleteDtsEventList" parameterType="CommonVO" resultType="DtsEventVO">
+		<![CDATA[ 
+			SELECT dts_event_id AS dtsEventId
+			FROM tb_dts_event
+			WHERE dts_event_time >= #{nowAgo12H}
+			AND dts_event_time <= #{now}
+		]]>
+	</select>
+	
+	<update id="setUpdateDtsEvent" parameterType="DtsEventVO">
+		<foreach collection="list" item="item" separator=";" close=";">
+			UPDATE tb_dts_event
+			SET dts_event_delete_yn = 'Y'
+			WHERE dts_event_id=#{item.dtsEventId,jdbcType=VARCHAR}
+		</foreach>
+	</update>
+</mapper>

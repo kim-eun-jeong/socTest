@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+
+<mapper namespace="kr.co.enitt.smartManagementSystem.dao.DtsEventStatsDAO">
+	<select id="getEventStatsDayList" parameterType="CommonVO" resultType="DtsEventStatsVO">
+		<![CDATA[ 
+			SELECT
+						 	 DATE_FORMAT(E.dts_event_time, '%Y-%m-%d') 	AS eventTime
+						 	,DATE_FORMAT(E.dts_event_time, '%d') 		 		AS eventTimeGroup
+			                ,E.dts_event_line											AS eventLine
+			                ,E.dts_event_code										AS eventCode
+			                ,count(0)													AS eventCount
+		
+			FROM 		tb_dts_event E
+			WHERE 	   1=1
+		]]>
+		<if test='searchDay != null and  searchDay != "" '>
+			<![CDATA[ AND DATE_FORMAT(E.dts_event_time, '%Y-%m') = #{searchDay} ]]>
+		</if>
+		<if test=' eventLineDay != null and eventLineDay != "" '>
+			<![CDATA[ AND E.dts_event_line = #{eventLineDay} ]]>
+		</if>
+		<if test=' eventCodeDay != null and eventCodeDay != "" '>
+			<![CDATA[ AND E.dts_event_code = #{eventCodeDay} ]]>
+		</if>
+		<if test=' eventZoneDay != null and eventZoneDay != "" '>
+			<![CDATA[ AND E.dts_event_zone = ${eventZoneDay} ]]>
+		</if>
+		<![CDATA[ 
+			GROUP BY DATE_FORMAT(E.dts_event_time, '%Y-%m-%d'),DATE_FORMAT(E.dts_event_time, '%d') , E.dts_event_line, E.dts_event_code
+		]]>
+	</select>
+	
+	<select id="getEventStatsMonthList" parameterType="CommonVO" resultType="DtsEventStatsVO">
+		<![CDATA[ 
+			SELECT
+						 	 DATE_FORMAT(E.dts_event_time, '%Y-%m') 		AS eventTime
+						 	,DATE_FORMAT(E.dts_event_time, '%m') 		 		AS eventTimeGroup
+			                ,E.dts_event_line											AS eventLine
+			                ,E.dts_event_code										AS eventCode
+			                ,count(0)													AS eventCount
+		
+			FROM 		tb_dts_event E
+			WHERE 	   1=1
+		]]>
+		<if test='searchMonth != null and  searchMonth != "" '>
+			<![CDATA[ AND DATE_FORMAT(E.dts_event_time, '%Y') = #{searchMonth}]]>
+		</if>
+		<if test=' eventLineMonth != null and eventLineMonth  != "" '>
+			<![CDATA[ AND E.dts_event_line = #{eventLineMonth} ]]>
+		</if>
+		<if test=' eventCodeMonth != null and eventCodeMonth != "" '>
+			<![CDATA[ AND E.dts_event_code = #{eventCodeMonth} ]]>
+		</if>
+		<if test=' eventZoneMonth != null and eventZoneMonth != "" '>
+			<![CDATA[ AND E.dts_event_zone = ${eventZoneMonth} ]]>
+		</if>
+		<![CDATA[ 
+			GROUP BY DATE_FORMAT(E.dts_event_time, '%Y-%m'),DATE_FORMAT(E.dts_event_time, '%m'), E.dts_event_line, E.dts_event_code
+		]]>
+	</select>
+	
+	<select id="getEventStatsYearList" parameterType="CommonVO" resultType="DtsEventStatsVO">
+		<![CDATA[ 
+			SELECT
+						 	 DATE_FORMAT(E.dts_event_time, '%Y') 		AS eventTime
+						 	,DATE_FORMAT(E.dts_event_time, '%Y') 		 		AS eventTimeGroup
+			                ,E.dts_event_line											AS eventLine
+			                ,E.dts_event_code										AS eventCode
+			                ,count(0)													AS eventCount
+	
+			FROM 		tb_dts_event E
+			WHERE 	   1=1
+		]]>
+		<if test='searchYear != null and  searchYear != "" '>
+			<![CDATA[ AND DATE_FORMAT(E.dts_event_time, '%Y') >= #{searchYear}]]>
+		</if>
+		<if test='searchYearEnd != null and  searchYearEnd != "" '>
+			<![CDATA[ AND DATE_FORMAT(E.dts_event_time, '%Y') <= #{searchYearEnd}]]>
+		</if>
+		<if test=' eventLineYear != null and eventLineYear  != "" '>
+			<![CDATA[ AND E.dts_event_line = #{eventLineYear} ]]>
+		</if>
+		<if test=' eventCodeYear != null and eventCodeYear != "" '>
+			<![CDATA[ AND E.dts_event_code = #{eventCodeYear} ]]>
+		</if>
+		<if test=' eventZoneYear != null and eventZoneYear != "" '>
+			<![CDATA[ AND E.dts_event_zone = ${eventZoneYear} ]]>
+		</if>
+		<![CDATA[ 
+			GROUP BY DATE_FORMAT(E.dts_event_time, '%Y'), E.dts_event_line, E.dts_event_code
+		]]>
+	</select>
+</mapper>

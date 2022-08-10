@@ -1,0 +1,353 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.enitt.smartManagementSystem.dao.DasEventDAO">
+	<sql id="base_das_event_column"> 
+		E.das_event_id 				AS dasEventId
+	    ,E.das_event_code 			AS dasEventCode
+	   	,E.das_event_time 			AS dasEventTime
+	   	,E.das_event_update_time 	AS dasEventUpdateTime
+	  	,E.das_event_location		AS dasEventLocation
+	  	,CONCAT('STA.',CASE 
+				      		WHEN E.das_event_tunnel = 'TUNNEL_03' OR E.das_event_tunnel = 'TUNNEL_05'
+				      		THEN TRUNCATE((E.das_event_location+19)/20,0)
+						   	ELSE TRUNCATE((E.das_event_location+(6*20+11))/20,0)      
+							END
+							,'+'
+							,CASE 
+					      	WHEN E.das_event_tunnel = 'TUNNEL_03' OR E.das_event_tunnel = 'TUNNEL_05'
+					      	THEN (E.das_event_location+19)%20
+							   ELSE (E.das_event_location+(6*20+11))%20    
+							END
+							,'m'
+		)		AS dasEventLocationStr
+	  	,E.das_event_tunnel 		AS dasEventTunnel
+	  	,E.das_event_zone 			AS dasEventZone
+	  	,E.das_event_state 			AS dasEventState
+	  	,E.das_event_register_date 	AS dasEventRegisterDate
+	  	,E.das_event_delete_yn		AS dasEventDeleteYn
+	</sql>
+	<sql id="base_das_event_time_column"> 
+	   	DATE_FORMAT(E.das_event_time, '%Y')  	AS dasEventTimeYear
+	   	,DATE_FORMAT(E.das_event_time, '%m') 	AS dasEventTimeMonth
+	   	,DATE_FORMAT(E.das_event_time, '%d') 		AS dasEventTimeDay
+	   	,DATE_FORMAT(E.das_event_time, '%H') 	AS dasEventTimeHour
+	   	,DATE_FORMAT(E.das_event_time, '%i')  		AS dasEventTimeMinute
+	   	,DATE_FORMAT(E.das_event_time, '%s')  	AS dasEventTimeSecond
+	</sql>
+	
+	<sql id="base_das_event_code">
+		EC.code_name 			AS dasEventCodeNm
+	</sql>
+	
+	<sql id="base_das_event_tunnel">
+		EC1.code_name 			AS dasEventTunnelNm
+	</sql>
+	
+	<sql id="base_das_event_zone">
+		Z.zone_name 			AS dasEventZoneNm
+	</sql>
+	
+	
+	<select id="getDasEventList" parameterType="CommonVO" resultType="DasEventVO">
+		<![CDATA[ 
+			SELECT 
+		]]>
+		<include refid="base_das_event_column" />,
+		<include refid="base_das_event_time_column" />,
+		<include refid="base_das_event_code" />,
+		<include refid="base_das_event_tunnel" />,
+		<include refid="base_das_event_zone" />
+		<![CDATA[ 
+			FROM tb_das_event E
+			LEFT JOIN tb_code EC
+			ON (EC.code_id = E.das_event_code
+			AND EC.parent_code_id = 'DAS_EVENT'
+			AND	EC.code_use_yn = 'Y'
+			)
+			LEFT JOIN tb_code EC1
+			ON (EC1.code_id = E.das_event_tunnel
+			AND EC1.parent_code_id = 'TUNNEL'
+			AND	EC1.code_use_yn = 'Y'
+			)
+			LEFT JOIN tb_zone Z
+			ON Z.zone_id = E.das_event_zone
+			WHERE	1=1
+		]]>
+		<if test=' eventTimeStart != null and eventTimeStart != "" '>
+			<![CDATA[ AND date_format(E.das_event_time, '%Y-%m-%d') >= date_format(#{eventTimeStart}, '%Y-%m-%d') ]]>
+		</if>
+		<if test=' eventTimeEnd != null and eventTimeEnd != "" '>
+			<![CDATA[ AND date_format(E.das_event_time, '%Y-%m-%d') <= date_format(#{eventTimeEnd}, '%Y-%m-%d') ]]>
+		</if>
+		<if test=' eventLocationStart != null and eventLocationStart != "" '>
+			<![CDATA[ AND  CASE 
+							      		WHEN E.das_event_tunnel = 'TUNNEL_03' OR E.das_event_tunnel = 'TUNNEL_05'
+							      		THEN TRUNCATE((E.das_event_location+19)/20,0)
+									   	ELSE TRUNCATE((E.das_event_location+(6*20+11))/20,0)      
+									END >= #{eventLocationStart} 
+			 ]]>
+		</if>
+		<if test=' eventLocationEnd != null and eventLocationEnd != "" '>
+			<![CDATA[  AND  CASE 
+							      		WHEN E.das_event_tunnel = 'TUNNEL_03' OR E.das_event_tunnel = 'TUNNEL_05'
+							      		THEN TRUNCATE((E.das_event_location+19)/20,0)
+									   	ELSE TRUNCATE((E.das_event_location+(6*20+11))/20,0)      
+									END <= #{eventLocationEnd} 
+			]]>
+		</if>
+		<if test=' eventCode != null and eventCode != "" '>
+			<![CDATA[ AND E.das_event_code = #{eventCode} ]]>
+		</if>
+		<if test=' eventTunnel != null and eventTunnel != "" '>
+			<![CDATA[ AND E.das_event_tunnel = #{eventTunnel} ]]>
+		</if>
+		<if test=' dashboard != null and dashboard != "" '>
+			<![CDATA[ 
+				AND E.das_event_time >= DATE_SUB(#{now}, INTERVAL 12 HOUR) 
+				AND    1 =
+				       (SELECT count(0)
+				       FROM    tb_das_event C
+				       WHERE   C.das_event_tunnel                                      = E.das_event_tunnel
+				       AND     C.das_event_code                                        = E.das_event_code
+				       AND     C.das_event_location                                    = E.das_event_location
+				       AND     C.das_event_update_time >= DATE_SUB(E.das_event_update_time, INTERVAL 2 MINUTE)
+				       AND     C.das_event_update_time <= E.das_event_update_time
+				       )
+				
+				AND E.das_event_delete_yn = 'N'
+			]]>
+		</if>
+		<![CDATA[
+			ORDER BY E.das_event_time DESC 
+		]]>
+	</select>
+	
+	<select id="getDasEventPagingList" parameterType="CommonVO" resultType="DasEventVO">
+		<![CDATA[ 
+			SELECT 
+		]]>
+		<include refid="base_das_event_column" />,
+		<include refid="base_das_event_code" />,
+		<include refid="base_das_event_tunnel" />,
+		<include refid="base_das_event_zone" />
+		<![CDATA[  
+			FROM tb_das_event E
+			LEFT JOIN tb_code EC
+			ON (EC.code_id = E.das_event_code
+			AND EC.parent_code_id = 'DAS_EVENT'
+			AND	EC.code_use_yn = 'Y'
+			)
+			LEFT JOIN tb_code EC1
+			ON (EC1.code_id = E.das_event_tunnel
+			AND EC1.parent_code_id = 'TUNNEL'
+			AND	EC1.code_use_yn = 'Y'
+			)
+			LEFT JOIN tb_zone Z
+			ON Z.zone_id = E.das_event_zone
+			WHERE	1=1
+		]]>
+		<if test=' eventTimeStart != null and eventTimeStart != "" '>
+			<![CDATA[ AND date_format(E.das_event_time, '%Y-%m-%d') >= date_format(#{eventTimeStart}, '%Y-%m-%d') ]]>
+		</if>
+		<if test=' eventTimeEnd != null and eventTimeEnd != "" '>
+			<![CDATA[ AND date_format(E.das_event_time, '%Y-%m-%d') <= date_format(#{eventTimeEnd}, '%Y-%m-%d') ]]>
+		</if>
+		<if test=' eventLocationStart != null and eventLocationStart != "" '>
+			<![CDATA[  AND  CASE 
+							      		WHEN E.das_event_tunnel = 'TUNNEL_03' OR E.das_event_tunnel = 'TUNNEL_05'
+							      		THEN TRUNCATE((E.das_event_location+19)/20,0)
+									   	ELSE TRUNCATE((E.das_event_location+(6*20+11))/20,0)      
+									END >= #{eventLocationStart} 
+			]]>
+		</if> 
+		<if test=' eventLocationEnd != null and eventLocationEnd != "" '>
+			<![CDATA[  AND  CASE 
+							      		WHEN E.das_event_tunnel = 'TUNNEL_03' OR E.das_event_tunnel = 'TUNNEL_05'
+							      		THEN TRUNCATE((E.das_event_location+19)/20,0)
+									   	ELSE TRUNCATE((E.das_event_location+(6*20+11))/20,0)      
+									END <= #{eventLocationEnd} 
+			]]>
+		</if>
+		<if test=' eventCode != null and eventCode != "" '>
+			<![CDATA[ AND E.das_event_code = #{eventCode} ]]>
+		</if>
+		<if test=' eventTunnel != null and eventTunnel != "" '>
+			<![CDATA[ AND E.das_event_tunnel = #{eventTunnel} ]]>
+		</if>
+		<if test=' dashboard != null and dashboard != "" '>
+			<![CDATA[ 
+				AND E.das_event_time >= DATE_SUB(#{now}, INTERVAL 12 HOUR) 
+				AND    1 =
+				       (SELECT count(0)
+				       FROM    tb_das_event C
+				       WHERE   C.das_event_tunnel                                      = E.das_event_tunnel
+				       AND     C.das_event_code                                        = E.das_event_code
+				       AND     C.das_event_location                                    = E.das_event_location
+				       AND     C.das_event_update_time >= DATE_SUB(E.das_event_update_time, INTERVAL 2 MINUTE)
+				       AND     C.das_event_update_time <= E.das_event_update_time
+				       )
+				
+				AND E.das_event_delete_yn = 'N'
+			]]>
+		</if>
+		<![CDATA[ 
+			ORDER BY E.das_event_time DESC 
+			LIMIT ${startNum}, ${pageSize}
+		]]>
+	</select>
+	
+	<select id="getDasEventListCnt" parameterType="CommonVO" resultType="int">
+		<![CDATA[ 
+			SELECT 
+					count(0) 
+			FROM tb_das_event E
+			LEFT JOIN tb_code EC
+			ON (EC.code_id = E.das_event_code
+			AND EC.parent_code_id = 'DAS_EVENT'
+			AND	EC.code_use_yn = 'Y'
+			)
+			LEFT JOIN tb_code EC1
+			ON (EC1.code_id = E.das_event_tunnel
+			AND EC1.parent_code_id = 'TUNNEL'
+			AND	EC1.code_use_yn = 'Y'
+			)
+			LEFT JOIN tb_zone Z
+			ON Z.zone_id = E.das_event_zone
+			WHERE	1=1 
+		]]>
+		<if test=' eventTimeStart != null and eventTimeStart != "" '>
+			<![CDATA[ AND date_format(E.das_event_time, '%Y-%m-%d') >= date_format(#{eventTimeStart}, '%Y-%m-%d') ]]>
+		</if>
+		<if test=' eventTimeEnd != null and eventTimeEnd != "" '>
+			<![CDATA[ AND date_format(E.das_event_time, '%Y-%m-%d') <= date_format(#{eventTimeEnd}, '%Y-%m-%d') ]]>
+		</if>
+		<if test=' eventLocationStart != null and eventLocationStart != "" '>
+			<![CDATA[  AND  CASE 
+							      		WHEN E.das_event_tunnel = 'TUNNEL_03' OR E.das_event_tunnel = 'TUNNEL_05'
+							      		THEN TRUNCATE((E.das_event_location+19)/20,0)
+									   	ELSE TRUNCATE((E.das_event_location+(6*20+11))/20,0)      
+									END >= #{eventLocationStart} 
+			]]>
+		</if>
+		<if test=' eventLocationEnd != null and eventLocationEnd != "" '>
+			<![CDATA[ AND  CASE 
+							      		WHEN E.das_event_tunnel = 'TUNNEL_03' OR E.das_event_tunnel = 'TUNNEL_05'
+							      		THEN TRUNCATE((E.das_event_location+19)/20,0)
+									   	ELSE TRUNCATE((E.das_event_location+(6*20+11))/20,0)      
+									END <= #{eventLocationEnd} 
+			]]>
+		</if>
+		<if test=' eventCode != null and eventCode != "" '>
+			<![CDATA[ AND E.das_event_code = #{eventCode} ]]>
+		</if>
+		<if test=' eventTunnel != null and eventTunnel != "" '>
+			<![CDATA[ AND E.das_event_tunnel = #{eventTunnel} ]]>
+		</if>
+		<if test=' dashboard != null and dashboard != "" '>
+			<![CDATA[ 
+				AND E.das_event_time >= DATE_SUB(#{now}, INTERVAL 12 HOUR) 
+				AND    1 =
+				       (SELECT count(0)
+				       FROM    tb_das_event C
+				       WHERE   C.das_event_tunnel                                      = E.das_event_tunnel
+				       AND     C.das_event_code                                        = E.das_event_code
+				       AND     C.das_event_location                                    = E.das_event_location
+				       AND     C.das_event_update_time >= DATE_SUB(E.das_event_update_time, INTERVAL 2 MINUTE)
+				       AND     C.das_event_update_time <= E.das_event_update_time
+				       )
+				
+				AND E.das_event_delete_yn = 'N'
+			]]>
+		</if>
+		<if test=' dasLastTime != null and dasLastTime != "" '>
+			<![CDATA[ 
+		 		AND    E.das_event_time >=  DATE_FORMAT(#{dasLastTime} , '%Y-%m-%d %H:%i:%s')
+			]]>
+		</if>
+	</select>
+	
+	<select id="getDasEventCntList" parameterType="CommonVO" resultType="DasEventVO">
+		<![CDATA[ 
+				SELECT   	EC.code_id AS codeId
+							,EC.code_name AS codeName
+							,IFNULL(E.cnt,0) AS eventCnt
+			FROM     	tb_code EC
+			LEFT JOIN	( 
+				            SELECT  
+				                        count(0) as cnt ,
+				            			E.das_event_code as event_code
+				            FROM     	tb_das_event E
+				            WHERE    	1=1
+		]]>
+		<if test=' dashboard != null and dashboard != "" '>
+			<![CDATA[ 
+							AND E.das_event_time >= DATE_SUB(#{now}, INTERVAL 12 HOUR) 
+							AND    1 =
+							       (SELECT count(0)
+							       FROM    tb_das_event C
+							       WHERE   C.das_event_tunnel                                      = E.das_event_tunnel
+							       AND     C.das_event_code                                        = E.das_event_code
+							       AND     C.das_event_location                                    = E.das_event_location
+							       AND     C.das_event_update_time >= DATE_SUB(E.das_event_update_time, INTERVAL 2 MINUTE)
+							       AND     C.das_event_update_time <= E.das_event_update_time
+							       )
+				
+							AND E.das_event_delete_yn = 'N'
+			 ]]>
+		</if>
+		<![CDATA[ 
+				            GROUP BY 	das_event_code
+				            ) AS E
+			ON       		E.event_code = EC.code_id
+			WHERE    	EC.parent_code_id = 'DAS_EVENT'
+			AND      		EC.code_use_yn = 'Y'
+			AND      		EC.code_id !=  'EVENT_00'
+			ORDER BY 	EC.code_id
+		]]>
+	</select>
+	
+	
+	<select id="getDasEventDetail" parameterType="CommonVO" resultType="DasEventVO">
+		<![CDATA[ 
+			SELECT 
+		]]>
+		<include refid="base_das_event_column" />,
+		<include refid="base_das_event_code" />,
+		<include refid="base_das_event_tunnel" />,
+		<include refid="base_das_event_zone" />
+		<![CDATA[ 
+			FROM tb_das_event E
+			LEFT JOIN tb_code EC
+			ON (EC.code_id = E.das_event_code
+			AND EC.parent_code_id = 'DAS_EVENT'
+			AND	EC.code_use_yn = 'Y'
+			)
+			LEFT JOIN tb_code EC1
+			ON (EC1.code_id = E.das_event_tunnel
+			AND EC1.parent_code_id = 'TUNNEL'
+			AND	EC1.code_use_yn = 'Y'
+			)
+			LEFT JOIN tb_zone Z
+			ON Z.zone_id = E.das_event_zone
+			WHERE E.das_event_id =#{dasEventId}
+		]]>
+	</select>
+	
+	<select id="getDeleteDasEventList" parameterType="CommonVO" resultType="DasEventVO">
+		<![CDATA[ 
+			SELECT das_event_id AS dasEventId
+			FROM tb_das_event
+			WHERE  das_event_time >= #{nowAgo12H}
+			AND das_event_time <= #{now}
+		]]>
+	</select>
+	
+	<update id="setUpdateDasEvent" parameterType="DasEventVO">
+		<foreach collection="list" item="item" close=";" separator=";">
+				UPDATE tb_das_event
+				SET das_event_delete_yn = 'Y'
+				WHERE das_event_id=#{item.dasEventId,jdbcType=VARCHAR}
+		</foreach>
+	</update>
+</mapper>
